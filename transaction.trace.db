@@ -540,7 +540,7 @@ Wrong user name or password [28000-232]
 	at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
 	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
 	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
-	at com.starbank.recommendations.service.RecommendationServiceApplication.main(RecommendationServiceApplication.java:9)
+	at com.starbank.recommendations.RecommendationServiceApplication.main(RecommendationServiceApplication.java:9)
 Caused by: org.h2.jdbc.JdbcSQLInvalidAuthorizationSpecException: Неверное имя пользователя или пароль
 Wrong user name or password [28000-232]
 	at org.h2.message.DbException.getJdbcSQLException(DbException.java:522)
