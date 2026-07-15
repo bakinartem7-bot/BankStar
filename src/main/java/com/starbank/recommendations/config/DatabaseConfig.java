@@ -1,20 +1,21 @@
 package com.starbank.recommendations.config;
 
+import com.zaxxer.hikari.HikariDataSource;
+import jakarta.persistence.EntityManagerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import jakarta.sql.DataSource;
-import java.util.HashMap;
-import java.util.Map;
+import javax.sql.DataSource;
+import java.util.Properties;
 
 @Configuration
 @EnableJpaRepositories(
@@ -24,52 +25,43 @@ import java.util.Map;
 )
 public class DatabaseConfig {
 
+    @Bean
     @Primary
-    @Bean(name = "defaultDataSource")
-    @ConfigurationProperties(prefix = "spring.datasource")
+    @ConfigurationProperties("spring.datasource")
     public DataSource defaultDataSource() {
         return DataSourceBuilder.create().build();
     }
 
-    @Bean(name = "defaultJdbcTemplate")
-    public JdbcTemplate defaultJdbcTemplate(
-            @org.springframework.beans.factory.annotation.Qualifier("defaultDataSource") DataSource dataSource) {
-        return new JdbcTemplate(dataSource);
-    }
-
-    @Bean(name = "ruleDataSource")
-    @ConfigurationProperties(prefix = "rule.datasource")
+    @Bean
+    @ConfigurationProperties("rule.datasource")
     public DataSource ruleDataSource() {
         return DataSourceBuilder.create().build();
     }
 
     @Bean(name = "ruleEntityManagerFactory")
     public LocalContainerEntityManagerFactoryBean ruleEntityManagerFactory(
-            @org.springframework.beans.factory.annotation.Qualifier("ruleDataSource") DataSource ruleDataSource) {
+            @Qualifier("ruleDataSource") DataSource ruleDataSource) {
 
-        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
-        em.setDataSource(ruleDataSource);
-        em.setPackagesToScan("com.starbank.recommendations.model");
+        LocalContainerEntityManagerFactoryBean emf = new LocalContainerEntityManagerFactoryBean();
+        emf.setDataSource(ruleDataSource);
+        emf.setPackagesToScan("com.starbank.recommendations.model");
 
         HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
-        em.setJpaVendorAdapter(vendorAdapter);
+        emf.setJpaVendorAdapter(vendorAdapter);
 
-        Map<String, Object> properties = new HashMap<>();
-        properties.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
-        properties.put("hibernate.show_sql", "false");
-        properties.put("hibernate.format_sql", "true");
-        em.setJpaPropertyMap(properties);
+        Properties properties = new Properties();
+        properties.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
+        properties.setProperty("hibernate.show_sql", "false");
+        emf.setJpaProperties(properties);
 
-        return em;
+        return emf;
     }
 
     @Bean(name = "ruleTransactionManager")
     public PlatformTransactionManager ruleTransactionManager(
-            @org.springframework.beans.factory.annotation.Qualifier("ruleEntityManagerFactory")
-            LocalContainerEntityManagerFactoryBean ruleEntityManagerFactory) {
-
+            @Qualifier("ruleEntityManagerFactory") EntityManagerFactory emf) {
         JpaTransactionManager transactionManager = new JpaTransactionManager();
-        transactionManager.setEntityManagerFactory(ruleEntityManagerFactory.getObject());
+        transactionManager.setEntityManagerFactory(emf);
         return transactionManager;
     }
 }
