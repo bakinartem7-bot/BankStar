@@ -1,49 +1,5 @@
 databaseChangeLog:
-  - changeSet:
-      id: 1
-      author: dev
-      changes:
-        - createTable:
-            tableName: dynamic_rule
-            columns:
-              - column:
-                  name: id
-                  type: BIGINT
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-              - column:
-                  name: product_name
-                  type: VARCHAR(255)
-              - column:
-                  name: product_id
-                  type: VARCHAR(255)
-              - column:
-                  name: product_text
-                  type: TEXT
-        - createTable:
-            tableName: rule_query_step
-            columns:
-              - column:
-                  name: id
-                  type: BIGINT
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-              - column:
-                  name: rule_id
-                  type: BIGINT
-                  constraints:
-                    nullable: false
-                    foreignKeyName: fk_step_rule
-                    references: dynamic_rule(id)
-              - column:
-                  name: query
-                  type: VARCHAR(100)
-              - column:
-                  name: arguments_json
-                  type: jsonb
-              - column:
-                  name: negate
-                  type: BOOLEAN
-                  defaultValueBoolean: false
+  - include:
+      file: db/changelog/changesets/001_create_rules_table.yaml
+  - include:
+      file: db/changelog/changesets/002_create_rule_steps_table.yaml

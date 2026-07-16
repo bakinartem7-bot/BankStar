@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-rules-table
+      author: dev
+      changes:
+        - createTable:
+            tableName: rules
+            columns:
+              - column:
+                  name: id
+                  type: varchar(255)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: product_name
+                  type: varchar(255)
+              - column:
+                  name: product_id
+                  type: varchar(255)
+              - column:
+                  name: product_text
+                  type: text
+              - column:
+                  name: status
+                  type: varchar(50)
+                  defaultValue: 'ACTIVE'
