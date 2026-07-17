@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: changesets/001_create_rules_table.yml
+      relativeToChangelogFile: true
+  - include:
+      file: changesets/002_create_rule_steps_table.yml
+      relativeToChangelogFile: true
