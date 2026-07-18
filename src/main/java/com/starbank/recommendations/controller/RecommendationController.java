@@ -1,30 +1,29 @@
+
 package com.starbank.recommendations.controller;
 
 import com.starbank.recommendations.dto.RecommendationResponse;
+import com.starbank.recommendations.dto.RecommendationDto;
 import com.starbank.recommendations.service.RecommendationService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
+@RequestMapping("/api/recommendations")
+@RequiredArgsConstructor
 public class RecommendationController {
 
-    private final RecommendationService service;
+    private final RecommendationService recommendationService;
 
-    public RecommendationController(RecommendationService service) {
-        this.service = service;
-    }
-
-    @GetMapping("/recommendation/{user_id}")
-    public ResponseEntity<RecommendationResponse> getRecommendations(@PathVariable("user_id") String userIdStr) {
-        UUID userId = UUID.fromString(userIdStr);
-        var recommendations = service.getRecommendations(userId);
+    @GetMapping("/{userId}")
+    public ResponseEntity<RecommendationResponse> getRecommendations(@PathVariable UUID userId) {
+        List<com.starbank.recommendations.dto.RecommendationDto> recommendations =
+                recommendationService.getRecommendations(userId);
 
         RecommendationResponse response = new RecommendationResponse();
-        response.setUserId(userIdStr);
         response.setRecommendations(recommendations);
 
         return ResponseEntity.ok(response);
