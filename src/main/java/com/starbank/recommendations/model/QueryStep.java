@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class QueryStep {
+public class QueryStep implements ConditionStep {  // <-- ключевое изменение: реализуем интерфейс
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
