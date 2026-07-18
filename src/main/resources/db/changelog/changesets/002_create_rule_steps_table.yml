@@ -1,25 +1,41 @@
 databaseChangeLog:
   - changeSet:
-      id: 002-create-rule-steps-table
+      id: 002
       author: dev
       changes:
         - createTable:
-            tableName: rule_steps
+            tableName: rule_query_steps
             columns:
               - column:
                   name: id
-                  type: bigint auto_increment
+                  type: BIGINT
+                  autoIncrement: true
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
                   name: rule_id
-                  type: varchar(255)
+                  type: BIGINT
                   constraints:
-                    foreignKeyName: fk_rule_steps_rule
+                    nullable: false
+                    foreignKeyName: fk_rule_query_steps_rule
               - column:
                   name: step_order
-                  type: int
+                  type: INT
+                  constraints:
+                    nullable: false
               - column:
-                  name: condition
-                  type: text
+                  name: query_type
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: query_value
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: operator
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: true

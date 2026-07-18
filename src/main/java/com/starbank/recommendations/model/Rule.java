@@ -1,40 +1,38 @@
 package com.starbank.recommendations.model;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "rules")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Rule {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "product_id", nullable = false)
+    @Column(nullable = false, length = 255)
+    private String name;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(length = 255)
     private String productId;
 
-    @Column(name = "product_name")
-    private String productName;
+    @Column(nullable = false)
+    private boolean isActive = true;
 
-    @Column(name = "product_text")
-    private String productText;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public String getProductId() { return productId; }
-    public void setProductId(String productId) { this.productId = productId; }
-
-    public String getProductName() { return productName; }
-    public void setProductName(String productName) { this.productName = productName; }
-
-    public String getProductText() { return productText; }
-    public void setProductText(String productText) { this.productText = productText; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<QueryStep> steps = new ArrayList<>();
 }

@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: 001-create-rules-table
+      id: 001
       author: dev
       changes:
         - createTable:
@@ -8,20 +8,29 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: varchar(255)
+                  type: BIGINT
+                  autoIncrement: true
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: product_name
-                  type: varchar(255)
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+                  constraints:
+                    nullable: true
               - column:
                   name: product_id
-                  type: varchar(255)
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true
               - column:
-                  name: product_text
-                  type: text
-              - column:
-                  name: status
-                  type: varchar(50)
-                  defaultValue: 'ACTIVE'
+                  name: is_active
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+                    defaultValueBoolean: true

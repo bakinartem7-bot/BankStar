@@ -1,39 +1,36 @@
 package com.starbank.recommendations.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "rule_query_step")
+@Table(name = "rule_query_steps")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class QueryStep {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "rule_id", nullable = false)
-    private RuleEntity rule;
+    private Rule rule;
 
     @Column(nullable = false)
-    private String query;
+    private Integer stepOrder;
 
-    @Column
-    private String argumentsJson;
+    @Column(nullable = false, length = 255)
+    private String queryType;
 
-    private boolean negate;
+    @Column(columnDefinition = "TEXT")
+    private String queryValue;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public RuleEntity getRule() { return rule; }
-    public void setRule(RuleEntity rule) { this.rule = rule; }
-
-    public String getQuery() { return query; }
-    public void setQuery(String query) { this.query = query; }
-
-    public String getArgumentsJson() { return argumentsJson; }
-    public void setArgumentsJson(String argumentsJson) { this.argumentsJson = argumentsJson; }
-
-    public boolean isNegate() { return negate; }
-    public void setNegate(boolean negate) { this.negate = negate; }
+    @Column(length = 50)
+    private String operator;
 }
