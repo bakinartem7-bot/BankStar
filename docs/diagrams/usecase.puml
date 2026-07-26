@@ -1,0 +1,45 @@
+@startuml
+title Диаграмма вариантов использования — StarBank Recommendations Service
+
+left to right direction
+
+' Акторы (роли из ТЗ)
+actor "Менеджер" as Manager
+actor "Пользователь" as User
+actor "Внешняя система\n(мониторинг, сброс кеша)" as External
+
+' Основные прецеденты (Use Cases)
+usecase "Создать динамическое правило" as UC_CreateRule
+usecase "Получить статистику правил" as UC_Stats
+usecase "Активировать/деактивировать правило" as UC_ToggleRule
+usecase "Получить рекомендации" as UC_GetRecs
+usecase "Сбросить кеш рекомендаций" as UC_ClearCache
+usecase "Собрать метрики приложения" as UC_Metrics
+
+' Связи акторов с прецедентами
+Manager --> UC_CreateRule : REQ-001
+Manager --> UC_Stats : REQ-002, REQ-003
+Manager --> UC_ToggleRule : управление жизненным циклом
+
+User --> UC_GetRecs : REQ-004
+
+External --> UC_ClearCache : сброс кеша (Caffeine)
+External --> UC_Metrics : сбор метрик (Prometheus/лог)
+
+' Внутренние зависимости и уточнения
+UC_GetRecs ..> UC_FallbackStatic : при ошибке БД использует статические правила
+note right of UC_FallbackStatic
+  NFR-003: fallback на StaticRules
+  если БД недоступна — сервис не падает
+end note
+
+UC_Stats ..> UC_ApplyCount : читает поле applyCount из БД
+note right of UC_ApplyCount
+  REQ-003: статистика по количеству
+  применений каждого правила
+end note
+
+UC_CreateRule ..> UC_SaveToDB : сохраняет правило и шаги в PostgreSQL/H2
+UC_ToggleRule ..> UC_UpdateDB : обновляет флаг isActive
+
+@enduml

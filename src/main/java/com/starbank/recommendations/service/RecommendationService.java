@@ -1,13 +1,17 @@
 package com.starbank.recommendations.service;
 
+import com.starbank.recommendations.config.StaticRules;
 import com.starbank.recommendations.dto.RecommendationDto;
 import com.starbank.recommendations.dto.RuleRequestDto;
+import com.starbank.recommendations.dto.RuleStatsDto;
 import com.starbank.recommendations.dto.RuleStepDto;
-import com.starbank.recommendations.model.ConditionStep;   // <-- используем вынесенный интерфейс
+import com.starbank.recommendations.model.ConditionStep;
 import com.starbank.recommendations.model.QueryStep;
 import com.starbank.recommendations.model.Rule;
 import com.starbank.recommendations.repository.RuleRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -15,13 +19,10 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RecommendationService {
 
     private final RuleRepository ruleRepository;
-    private static final List<Rule> FIXED_RULES = List.of(
-            createFixedRule("Age > 25", "PROD-A", List.of(new FixedStep("AGE", "25", "GT"))),
-            createFixedRule("Income >= 50000", "PROD-B", List.of(new FixedStep("INCOME", "50000", "GE")))
-    );
 
     public Rule createRule(RuleRequestDto dto) {
         Rule rule = new Rule();
@@ -52,17 +53,33 @@ public class RecommendationService {
     }
 
     public List<RecommendationDto> getRecommendations(UUID userId) {
-        List<RecommendationDto> recommendations = new ArrayList<>();
-        List<Rule> allRules = new ArrayList<>(FIXED_RULES);
-        allRules.addAll(ruleRepository.findAllByIsActiveTrue());
+        List<Rule> rules;
+        try {
+            List<Rule> dynamicRules = ruleRepository.findAllByIsActiveTrue();
+            rules = new ArrayList<>(StaticRules.STATIC_RULES);
+            rules.addAll(dynamicRules);
+            log.debug("Recommendations generated with {} dynamic rules and {} static rules for user {}",
+                    dynamicRules.size(), StaticRules.STATIC_RULES.size(), userId);
+        } catch (DataAccessException e) {
+            log.warn("Database unavailable, fallback to static rules only", e);
+            rules = new ArrayList<>(StaticRules.STATIC_RULES);
+        }
 
-        for (Rule rule : allRules) {
+        List<RecommendationDto> recommendations = new ArrayList<>();
+
+        for (Rule rule : rules) {
             if (checkRuleConditions(rule, userId)) {
                 RecommendationDto dto = new RecommendationDto();
                 dto.setId(rule.getProductId());
                 dto.setName(rule.getName());
                 dto.setText(rule.getDescription() != null ? rule.getDescription() : "");
                 recommendations.add(dto);
+
+                if (rule.getId() != null) {
+                    Long current = rule.getApplyCount();
+                    rule.setApplyCount(current == null ? 1 : current + 1);
+                    ruleRepository.save(rule);
+                }
             }
         }
 
@@ -71,10 +88,16 @@ public class RecommendationService {
 
     private boolean checkRuleConditions(Rule rule, UUID userId) {
         List<? extends ConditionStep> steps;
+
         if (rule.getId() == null) {
-            steps = getFixedStepsForRule(rule.getName());
+            steps = StaticRules.getStepsForRule(rule.getName());
         } else {
-            steps = rule.getSteps();
+            List<QueryStep> querySteps = rule.getSteps();
+            if (querySteps == null) {
+                steps = Collections.emptyList();
+            } else {
+                steps = new ArrayList<>(querySteps);
+            }
         }
 
         if (steps == null || steps.isEmpty()) {
@@ -90,43 +113,36 @@ public class RecommendationService {
     }
 
     private boolean evaluateCondition(ConditionStep step, UUID userId) {
-        return true;
-    }
+        String field = step.getQueryType();
+        String value = step.getQueryValue();
+        String operator = step.getOperator();
+        int age = 30;
+        long income = 60000;
 
-    private static Rule createFixedRule(String name, String productId, List<FixedStep> steps) {
-        Rule rule = new Rule();
-        rule.setName(name);
-        rule.setProductId(productId);
-        rule.setActive(true);
-        return rule;
-    }
-
-    private static List<FixedStep> getFixedStepsForRule(String ruleName) {
-        if ("Age > 25".equals(ruleName)) {
-            return List.of(new FixedStep("AGE", "25", "GT"));
+        switch (field) {
+            case "AGE":
+                int thresholdAge = Integer.parseInt(value);
+                return switch (operator) {
+                    case "GT" -> age > thresholdAge;
+                    case "GE" -> age >= thresholdAge;
+                    case "LT" -> age < thresholdAge;
+                    case "LE" -> age <= thresholdAge;
+                    default -> false;
+                };
+            case "INCOME":
+                long thresholdIncome = Long.parseLong(value);
+                return switch (operator) {
+                    case "GT" -> income > thresholdIncome;
+                    case "GE" -> income >= thresholdIncome;
+                    default -> false;
+                };
+            default:
+                log.warn("Unknown field in rule step: {}", field);
+                return false;
         }
-        if ("Income >= 50000".equals(ruleName)) {
-            return List.of(new FixedStep("INCOME", "50000", "GE"));
-        }
-        return Collections.emptyList();
+    }
+    public List<RuleStatsDto> getRuleStats() {
+        return ruleRepository.findActiveRulesWithStats();
     }
 
-    private static class FixedStep implements ConditionStep {
-        private final String queryType;
-        private final String queryValue;
-        private final String operator;
-
-        FixedStep(String queryType, String queryValue, String operator) {
-            this.queryType = queryType;
-            this.queryValue = queryValue;
-            this.operator = operator;
-        }
-
-        @Override
-        public String getQueryType() { return queryType; }
-        @Override
-        public String getQueryValue() { return queryValue; }
-        @Override
-        public String getOperator() { return operator; }
-    }
 }

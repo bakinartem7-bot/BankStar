@@ -35,4 +35,7 @@ public class Rule {
 
     @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<QueryStep> steps = new ArrayList<>();
+
+    @Column(columnDefinition = "BIGINT DEFAULT 0")
+    private Long applyCount = 0L;
 }
