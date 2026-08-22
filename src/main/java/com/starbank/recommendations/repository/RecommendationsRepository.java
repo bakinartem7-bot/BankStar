@@ -1,20 +1,21 @@
 package com.starbank.recommendations.repository;
 
 import com.starbank.recommendations.model.UserAggregates;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.dao.EmptyResultDataAccessException;
 
+import javax.sql.DataSource;
 import java.util.UUID;
 
 @Repository
 public class RecommendationsRepository {
 
     private final JdbcTemplate jdbcTemplate;
-
-    public RecommendationsRepository(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public RecommendationsRepository(@Qualifier("h2DataSource") DataSource dataSource) {
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
     }
 
     public UserAggregates findAggregatesByUserId(UUID userId) {
@@ -29,13 +30,14 @@ public class RecommendationsRepository {
             FROM transactions t
             JOIN products p ON t.product_id = p.id
             WHERE t.user_id = ?
+            GROUP BY t.user_id
             """;
 
         try {
             UserAggregates agg = jdbcTemplate.queryForObject(
                     sql,
                     new BeanPropertyRowMapper<>(UserAggregates.class),
-                    userId.toString()
+                    userId
             );
             agg.setUserId(userId);
             return agg;

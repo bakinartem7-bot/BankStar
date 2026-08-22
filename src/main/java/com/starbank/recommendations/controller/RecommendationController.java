@@ -1,6 +1,7 @@
 package com.starbank.recommendations.controller;
 
 import com.starbank.recommendations.dto.RecommendationDto;
+import com.starbank.recommendations.dto.RecommendationResponse;
 import com.starbank.recommendations.service.RecommendationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -27,10 +28,14 @@ public class RecommendationController {
     @Operation(summary = "Получить рекомендации",
             description = "Возвращает список рекомендаций для пользователя с учётом " +
                     "статических и динамических правил. При недоступности БД работает на статических правилах.")
-    @ApiResponse(responseCode = "200", description = "Список рекомендаций")
-    public ResponseEntity<List<RecommendationDto>> getRecommendations(@PathVariable UUID userId) {
-        var recommendations = recommendationService.getRecommendations(userId);
-        return ResponseEntity.ok(recommendations);
+    @ApiResponse(responseCode = "200", description = "Обёртка с userId и списком рекомендаций")
+    public ResponseEntity<RecommendationResponse> getRecommendations(@PathVariable UUID userId) {
+        List<RecommendationDto> recommendations = recommendationService.getRecommendations(userId);
+
+        RecommendationResponse response = new RecommendationResponse();
+        response.setUserId(userId.toString());
+        response.setRecommendations(recommendations);
+
+        return ResponseEntity.ok(response);
     }
 }
-

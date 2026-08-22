@@ -6,6 +6,7 @@ import com.starbank.recommendations.dto.RuleRequestDto;
 import com.starbank.recommendations.dto.RuleStatsDto;
 import com.starbank.recommendations.dto.RuleStepDto;
 import com.starbank.recommendations.model.ConditionStep;
+import com.starbank.recommendations.model.FixedStep;
 import com.starbank.recommendations.model.QueryStep;
 import com.starbank.recommendations.model.Rule;
 import com.starbank.recommendations.repository.RuleRepository;
@@ -87,24 +88,25 @@ public class RecommendationService {
     }
 
     private boolean checkRuleConditions(Rule rule, UUID userId) {
-        List<? extends ConditionStep> steps;
 
         if (rule.getId() == null) {
-            steps = StaticRules.getStepsForRule(rule.getName());
-        } else {
-            List<QueryStep> querySteps = rule.getSteps();
-            if (querySteps == null) {
-                steps = Collections.emptyList();
-            } else {
-                steps = new ArrayList<>(querySteps);
+            List<FixedStep> steps = StaticRules.getStepsForRule(rule.getName());
+            if (steps == null || steps.isEmpty()) {
+                return true;
             }
-        }
-
-        if (steps == null || steps.isEmpty()) {
+            for (FixedStep step : steps) {
+                if (!evaluateCondition(step, userId)) {
+                    return false;
+                }
+            }
             return true;
         }
 
-        for (ConditionStep step : steps) {
+        List<QueryStep> steps = rule.getSteps();
+        if (steps == null || steps.isEmpty()) {
+            return true;
+        }
+        for (QueryStep step : steps) {
             if (!evaluateCondition(step, userId)) {
                 return false;
             }
@@ -112,10 +114,12 @@ public class RecommendationService {
         return true;
     }
 
+
     private boolean evaluateCondition(ConditionStep step, UUID userId) {
         String field = step.getQueryType();
         String value = step.getQueryValue();
         String operator = step.getOperator();
+
         int age = 30;
         long income = 60000;
 
@@ -141,6 +145,7 @@ public class RecommendationService {
                 return false;
         }
     }
+
     public List<RuleStatsDto> getRuleStats() {
         return ruleRepository.findActiveRulesWithStats();
     }
