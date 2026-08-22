@@ -1,27 +1,148 @@
 package com.starbank.recommendations.service;
 
+import com.starbank.recommendations.config.StaticRules;
 import com.starbank.recommendations.dto.RecommendationDto;
-import com.starbank.recommendations.rule.RecommendationRuleSet;
+import com.starbank.recommendations.dto.RuleRequestDto;
+import com.starbank.recommendations.dto.RuleStatsDto;
+import com.starbank.recommendations.dto.RuleStepDto;
+import com.starbank.recommendations.model.ConditionStep;
+import com.starbank.recommendations.model.QueryStep;
+import com.starbank.recommendations.model.Rule;
+import com.starbank.recommendations.repository.RuleRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class RecommendationService {
 
-    private final List<RecommendationRuleSet> rules;
+    private final RuleRepository ruleRepository;
 
-    public RecommendationService(List<RecommendationRuleSet> rules) {
-        this.rules = rules;
+    public Rule createRule(RuleRequestDto dto) {
+        Rule rule = new Rule();
+        rule.setName(dto.getName());
+        rule.setDescription(dto.getDescription());
+        rule.setProductId(dto.getProductId());
+        rule.setActive(dto.isActive());
+
+        if (dto.getSteps() != null) {
+            List<QueryStep> steps = new ArrayList<>();
+            for (RuleStepDto stepDto : dto.getSteps()) {
+                QueryStep step = new QueryStep();
+                step.setStepOrder(stepDto.getStepOrder());
+                step.setQueryType(stepDto.getConditionType());
+                step.setQueryValue(stepDto.getConditionValue());
+                step.setOperator(stepDto.getOperator());
+                step.setRule(rule);
+                steps.add(step);
+            }
+            rule.setSteps(steps);
+        }
+
+        return ruleRepository.save(rule);
+    }
+
+    public List<Rule> getAllActiveRules() {
+        return ruleRepository.findAllByIsActiveTrue();
     }
 
     public List<RecommendationDto> getRecommendations(UUID userId) {
-        List<RecommendationDto> result = new ArrayList<>();
-        for (RecommendationRuleSet rule : rules) {
-            rule.check(userId).ifPresent(result::add);
+        List<Rule> rules;
+        try {
+            List<Rule> dynamicRules = ruleRepository.findAllByIsActiveTrue();
+            rules = new ArrayList<>(StaticRules.STATIC_RULES);
+            rules.addAll(dynamicRules);
+            log.debug("Recommendations generated with {} dynamic rules and {} static rules for user {}",
+                    dynamicRules.size(), StaticRules.STATIC_RULES.size(), userId);
+        } catch (DataAccessException e) {
+            log.warn("Database unavailable, fallback to static rules only", e);
+            rules = new ArrayList<>(StaticRules.STATIC_RULES);
         }
-        return result;
+
+        List<RecommendationDto> recommendations = new ArrayList<>();
+
+        for (Rule rule : rules) {
+            if (checkRuleConditions(rule, userId)) {
+                RecommendationDto dto = new RecommendationDto();
+                dto.setId(rule.getProductId());
+                dto.setName(rule.getName());
+                dto.setText(rule.getDescription() != null ? rule.getDescription() : "");
+                recommendations.add(dto);
+
+                if (rule.getId() != null) {
+                    Long current = rule.getApplyCount();
+                    rule.setApplyCount(current == null ? 1 : current + 1);
+                    ruleRepository.save(rule);
+                }
+            }
+        }
+
+        return recommendations;
     }
+
+    private boolean checkRuleConditions(Rule rule, UUID userId) {
+        List<? extends ConditionStep> steps;
+
+        if (rule.getId() == null) {
+            steps = StaticRules.getStepsForRule(rule.getName());
+        } else {
+            List<QueryStep> querySteps = rule.getSteps();
+            if (querySteps == null) {
+                steps = Collections.emptyList();
+            } else {
+                steps = new ArrayList<>(querySteps);
+            }
+        }
+
+        if (steps == null || steps.isEmpty()) {
+            return true;
+        }
+
+        for (ConditionStep step : steps) {
+            if (!evaluateCondition(step, userId)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean evaluateCondition(ConditionStep step, UUID userId) {
+        String field = step.getQueryType();
+        String value = step.getQueryValue();
+        String operator = step.getOperator();
+        int age = 30;
+        long income = 60000;
+
+        switch (field) {
+            case "AGE":
+                int thresholdAge = Integer.parseInt(value);
+                return switch (operator) {
+                    case "GT" -> age > thresholdAge;
+                    case "GE" -> age >= thresholdAge;
+                    case "LT" -> age < thresholdAge;
+                    case "LE" -> age <= thresholdAge;
+                    default -> false;
+                };
+            case "INCOME":
+                long thresholdIncome = Long.parseLong(value);
+                return switch (operator) {
+                    case "GT" -> income > thresholdIncome;
+                    case "GE" -> income >= thresholdIncome;
+                    default -> false;
+                };
+            default:
+                log.warn("Unknown field in rule step: {}", field);
+                return false;
+        }
+    }
+    public List<RuleStatsDto> getRuleStats() {
+        return ruleRepository.findActiveRulesWithStats();
+    }
+
 }

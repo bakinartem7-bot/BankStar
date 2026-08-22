@@ -1,0 +1,47 @@
+@startuml
+left to right direction
+title Диаграмма компонентов StarBank Recommendations Service
+
+' Акторы (внешние роли из ТЗ)
+actor "Менеджер" as Manager
+actor "Пользователь" as User
+actor "Внешняя система\n(сброс кеша, мониторинг)" as External
+
+' Компоненты приложения
+component "RecommendationController" as Controller
+component "RecommendationService" as Service
+component "RuleRepository" as Repo
+
+' Внешние системы
+database "PostgreSQL / H2" as DB
+component "Telegram Bot" as Telegram
+component "Swagger UI" as Swagger
+
+' Потоки от акторов
+Manager --> Controller : управление правилами\nи статистика
+User --> Controller : запрос рекомендаций
+External --> Controller : сброс кеша / мониторинг
+
+' Внутренние вызовы
+Controller --> Service : бизнес-логика выдачи\nи статистики
+Service --> Repo : CRUD правил, статистика
+Repo --> DB : хранение правил и applyCount
+
+' Интеграции и вспомогательные элементы
+Service --> StaticRules : fallback на статические правила\nпри недоступности БД
+note right of Service
+  Fallback (NFR-003):
+  если DB недоступна —
+  используются StaticRules
+end note
+
+Controller --> Swagger : OpenAPI-документация
+Telegram <-- User : получение рекомендаций\nчерез бота (интеграция)
+
+' Статические правила (в памяти, не БД)
+rectangle "In-Memory Config" as StaticRules {
+  component "StaticRules.java" as StaticConfig
+}
+StaticConfig ..> Service : предоставляет шаги\nдля статических правил
+
+@enduml
